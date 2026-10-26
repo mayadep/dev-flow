@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useClock } from "../hooks/use-clock";
 import { catalog } from "@/content";
 import { stuckAfterMs } from "@/core/engine/pace";
@@ -27,19 +27,22 @@ export function SessionScreen() {
     () => fromSearch(new URLSearchParams(params.toString()), new Set(catalog.topics.map((t) => t.id))),
     [params],
   );
+  // 페이지는 내비게이션 후에도 상태가 보존(Activity)되므로, 새로 들어올 때마다(push/replace)
+  // 새 세션이 시작되도록 키를 준다. 브라우저 뒤로/앞으로 가기에서는 진행 중이던 세션이 복원된다.
+  const { bfcacheId } = useRouter();
   // 학습 기록이 로드된 뒤에야 실력에 맞는 첫 문제를 고를 수 있다
   if (!ready) return <Loading />;
-  return <SessionRunner settings={settings} />;
+  return <SessionRunner key={bfcacheId} settings={settings} />;
 }
 
 function SessionRunner({ settings }: { settings: SessionSettings }) {
   const s = useSession(settings);
   const router = useRouter();
   const { state } = s;
-
-  useEffect(() => {
-    if (state.phase === "done") router.push("/");
-  }, [state.phase, router]);
+  const finish = () => {
+    s.complete();
+    router.push("/");
+  };
 
   switch (state.phase) {
     case "question":
@@ -58,7 +61,7 @@ function SessionRunner({ settings }: { settings: SessionSettings }) {
     case "relax":
       return <RelaxStage onDone={s.toMemo} />;
     case "memo":
-      return <MemoStage sessionId={state.id} onDone={s.complete} />;
+      return <MemoStage sessionId={state.id} onDone={finish} />;
     case "done":
       return <Loading />;
   }

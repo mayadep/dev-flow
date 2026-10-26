@@ -24,6 +24,8 @@ function subscribe(listener: () => void) {
     if (listeners.size === 0 && timer) {
       clearInterval(timer);
       timer = null;
+      // 다음 구독 때 멈춰 있던 옛 시각을 돌려주지 않도록 비운다
+      now = 0;
     }
   };
 }
